@@ -61,7 +61,17 @@ const FuelTankTimeCalculator = () => {
   const [error, setError] = useState("");
   const [isCalculating, setIsCalculating] = useState(false);
 
-  const mmPerM3 = 1603 / 2608.214; // Коэффициент перевода
+  // Коэффициенты перевода для двух резервуаров
+  const mmPerM3Small = 1603 / 2608.214; // Малый резервуар
+  const mmPerM3Large = 10487 / 6663; // Большой резервуар (10487 мм = 6663 м³)
+
+  // Функция для форматирования времени в ЧЧ:ММ
+  const formatHoursToTime = (hours) => {
+    const totalMinutes = Math.round(hours * 60);
+    const hoursPart = Math.floor(totalMinutes / 60);
+    const minutesPart = totalMinutes % 60;
+    return `${hoursPart}:${minutesPart.toString().padStart(2, "0")}`;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -94,47 +104,72 @@ const FuelTankTimeCalculator = () => {
           throw new Error("Скорость поступления должна быть положительной");
         }
 
-        const levelDifference = targetLevel - currentLevel;
-        const volumeDifference = levelDifference / mmPerM3;
-        const hoursNeeded = volumeDifference / inflowRate;
+        // Расчет для малого резервуара
+        const levelDifferenceSmall = targetLevel - currentLevel;
+        const volumeDifferenceSmall = levelDifferenceSmall / mmPerM3Small;
+        const hoursNeededSmall = volumeDifferenceSmall / inflowRate;
+
+        // Расчет для большого резервуара
+        const levelDifferenceLarge = targetLevel - currentLevel;
+        const volumeDifferenceLarge = levelDifferenceLarge / mmPerM3Large;
+        const hoursNeededLarge = volumeDifferenceLarge / inflowRate;
 
         const now = new Date();
-        const completionDate = new Date(
-          now.getTime() + hoursNeeded * 60 * 60 * 1000
+        const completionDateSmall = new Date(
+          now.getTime() + hoursNeededSmall * 60 * 60 * 1000
+        );
+        const completionDateLarge = new Date(
+          now.getTime() + hoursNeededLarge * 60 * 60 * 1000
         );
 
         setCompletionTime({
-          timeString: completionDate.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          date: completionDate.toLocaleDateString(),
-          hoursNeeded: hoursNeeded.toFixed(2),
+          smallTank: {
+            timeString: completionDateSmall.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            hoursNeeded: hoursNeededSmall,
+            formattedTime: formatHoursToTime(hoursNeededSmall),
+            volume: volumeDifferenceSmall.toFixed(2),
+          },
+          largeTank: {
+            timeString: completionDateLarge.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            hoursNeeded: hoursNeededLarge,
+            formattedTime: formatHoursToTime(hoursNeededLarge),
+            volume: volumeDifferenceLarge.toFixed(2),
+          },
         });
       } catch (err) {
         setError(err.message);
       } finally {
         setIsCalculating(false);
       }
-    }, 800); // Искусственная задержка для анимации
+    }, 800);
   };
 
   return (
-    <Box sx={{ px: 2 }}>
+    <Box
+      sx={{
+        px: 2,
+      }}
+    >
       <StyledCard>
         <CardContent sx={{ p: 4 }}>
           <Typography
-            variant="h4"
+            variant="h5"
             component="h1"
             gutterBottom
             sx={{
               fontWeight: 700,
               color: "#333",
               textAlign: "center",
-              mb: 4,
+              mb: 3,
             }}
           >
-            🛢️ Уровень
+            🛢️Уровень
           </Typography>
 
           <Box sx={{ mb: 3 }}>
@@ -225,21 +260,41 @@ const FuelTankTimeCalculator = () => {
                 animation: `${fadeIn} 0.5s ease-out`,
               }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                Результат расчета:
-              </Typography>
-              <Typography>
-                Целевой уровень будет достигнут в{" "}
-                <Box
-                  component="span"
-                  sx={{ fontWeight: 700, color: "#FE6B8B" }}
-                >
-                  {completionTime.timeString}
-                </Box>
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, color: "#666" }}>
-                (Через ~{completionTime.hoursNeeded} часов)
-              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  E-323....E-334:
+                </Typography>
+                <Typography>
+                  Время достижения:{" "}
+                  <Box
+                    component="span"
+                    sx={{ fontWeight: 700, color: "#FE6B8B" }}
+                  >
+                    {completionTime.smallTank.timeString}
+                  </Box>
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: "#666" }}>
+                  Через: {completionTime.smallTank.formattedTime} ⌛
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  E-322
+                </Typography>
+                <Typography>
+                  Время достижения:{" "}
+                  <Box
+                    component="span"
+                    sx={{ fontWeight: 700, color: "#FE6B8B" }}
+                  >
+                    {completionTime.largeTank.timeString}
+                  </Box>
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: "#666" }}>
+                  Через: {completionTime.largeTank.formattedTime} ⌛
+                </Typography>
+              </Box>
             </Box>
           )}
         </CardContent>
